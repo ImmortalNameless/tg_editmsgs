@@ -101,20 +101,20 @@ if __name__ == "__main__":
     
     @client.on(events.NewMessage(from_users=['me']))
     async def handler(event):
-            msg = event.message
-            if msg.text:
-                if msg.text.startswith('.'):
-                    await edit.replace_text(msg.text, msg.peer_id.user_id, msg.id)
-                elif msg.text.startswith('/listing'):
-                    await client.delete_message(msg)
-                    await client.send_message(edit.get_command_list())
-                elif msg.text.startswith('/add'):
-                    parsed_msg = msg.text.split(" ", 2)
-                    await client.delete_message(msg)
-                    await client.send_message(edit.add_key(parsed_msg[1], parsed_msg[2]))
-                elif msg.text.startswith('/del'):
-                    parsed_msg = msg.text.split(" ")
-                    await client.delete_message(msg)
-                    await client.send_message(edit.delete_key(parsed_msg[1]))
+        msg = event.message
+        if msg.text:
+            if msg.text.startswith('.'):
+                await edit.replace_text(msg.text, msg.peer_id.user_id, msg.id)
+            elif msg.text.startswith('/listing'):
+                await client.delete_message(msg)
+                await client.send_message(edit.get_command_list())
+            elif msg.text.startswith('/add'):
+                parsed_msg = msg.text.split(" ", 2)
+                await client.delete_message(msg)
+                await client.send_message(edit.add_key(parsed_msg[1], parsed_msg[2]))
+            elif msg.text.startswith('/del'):
+                parsed_msg = msg.text.split(" ")
+                await client.delete_message(msg)
+                await client.send_message(edit.delete_key(parsed_msg[1]))
 
     client.run_until_disconnected()
