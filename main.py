@@ -22,18 +22,16 @@ class editor:
         self.opendict()
 
     def opendict(self, data: dict|list|None=[]) -> dict|list|None:
+        result = None
         if len(data) == 0:
             with open("database.json", "r", encoding="utf-8") as file:
-                result = json.loads(file)
-                file.close()
+                result = json.load(file)
         else:
-            with open("database.json", "w", encoding="utf-8") as file:
+            with open("database.json", "w+", encoding="utf-8") as file:
                 json.dump(data, file, ensure_ascii=False, indent=4)
-                file.close()
                 result = data
-        self.commands = result
         return result
-
+        
     async def start_session(self) -> TelegramClient|None:
         print("[+] Session start... ok")
         try:
