@@ -4,57 +4,81 @@ import asyncio
 try:
     from telethon.sync import TelegramClient
     from telethon import events
+    from telethon.errors.rpcerrorlist import MessageNotModifiedError
 except ImportError:
     print("Telethon is not installed!\nPlease, install it by command: pip install telethon")
     exit()
 
+app_id = 0
+app_hash = ""
+session = "./editmsgs_sf.session"
+
+print("[+] Session start... ok")
+try:
+    client = TelegramClient(session, app_id, app_hash)
+    client.start()
+except Exception as e:
+    with open("log.txt", "w+", encoding="utf-8") as file:
+        file.write(e)
+    print("[-] Falied to connect to Telegram servers\nMore info in log.txt")
+    exit()
+
+
+@client.on(events.NewMessage(from_users=['me']))
+async def handler(event):
+    global client
+    edit = editor()
+    edit.client = client
+    msg = event.message
+    if msg.text:
+        if msg.text.startswith('.'):
+            await edit.replace_text(msg.text, msg.peer_id.user_id, msg.id)
+        elif msg.text.startswith('/listing'):
+            await client.delete_messages(msg.peer_id.user_id, msg.id)
+            await client.send_message(msg.peer_id.user_id, edit.get_command_list())
+        elif msg.text.startswith('/add'):
+            print(msg.text)
+            parsed_msg = msg.text.split(" ", 2)
+            print(parsed_msg)
+            await client.delete_messages(msg.peer_id.user_id, msg.id)
+            await client.send_message(msg.peer_id.user_id, edit.add_key(parsed_msg[1], parsed_msg[2]))
+        elif msg.text.startswith('/del'):
+            parsed_msg = msg.text.split(" ")
+            await client.delete_messages(msg.peer_id.user_id, msg.id)
+            await client.send_message(msg.peer_id.user_id, edit.delete_key(parsed_msg[1]))
+
 class editor:
 
-    app_id = 0
-    app_hash = ""
-    session = "./editmsgs_sf.session"
-
-    commands = []
+    commands = {}
 
     client = None
 
     def __init__(self) -> None:
         self.opendict()
 
-    def opendict(self, data: dict|list|None=[]) -> dict|list|None:
-        result = []
+    def opendict(self, data: dict|list|None={}) -> dict|list|None:
+        result = {}
         if len(data) == 0:
             try:
-                with open("database.json", "r", encoding="utf-8") as file:
-                    result = json.load(file)
+                f = open("database.json", "r", encoding="utf-8")
+                result = json.load(f)
+                f.close()
             except Exception:
-                result = []
+                result = {}
         else:
-            with open("database.json", "w+", encoding="utf-8") as file:
-                json.dump(data, file, ensure_ascii=False, indent=4)
-                result = data
+            f = open("database.json", "w+", encoding="utf-8")
+            json.dump(data, f, ensure_ascii=False, indent=4)
+            result = data
+            f.close()
+        self.commands = result
         return result
-        
-    async def start_session(self) -> TelegramClient|None:
-        print("[+] Session start... ok")
-        try:
-            client = TelegramClient(self.session, self.app_id, self.app_hash)
-            await client.connect()
-        except Exception as e:
-            with open("log.txt", "w+", encoding="utf-8") as file:
-                file.write(e)
-            print("[-] Falied to connect to Telegram servers\nMore info in log.txt")
-            exit()
-        print("[+] Connection to Telegram servers... ok")
-        self.client = client
-        return client
 
     def get_command_list(self) -> str:
         commands_list = "Список доступных команд:\n"
         try:
             for command, replacements in self.commands.items():
                 replacements_str = "\n    -> ".join(replacements)
-                commands_list += f".{command}:\n    {replacements_str}\n\n"
+                commands_list += f".{command}:\n    -> {replacements_str}\n\n"
         except Exception:
             commands_list += "  Команды не добавлены\n\n"
         commands_list += "Шпаргалка по командам:\n"\
@@ -65,8 +89,11 @@ class editor:
     
     def delete_key(self, key: str) -> str:
         if key in self.commands:
-            del self.commands[key]
-            self.opendict(self.commands)
+            new_commands = {}
+            for k,v in self.commands.items():
+                if k != key:
+                    new_commands[k] = v
+            self.opendict(new_commands)
             print(f"[+] Deleting key :{key}... ok")
             return f"Команда :{key} успешно удалена"
         else:
@@ -75,7 +102,7 @@ class editor:
     
     def add_key(self, key: str, values: str) -> str:
         values_list = re.findall(r'["\'](.*?)["\']', values)
-        self.commands[key] = values_list
+        self.commands[f"{key}"] = values_list
         self.opendict(self.commands)
         for value in values_list:
             values_str = "\n    -> ".join(value)
@@ -91,30 +118,13 @@ class editor:
             if message_text.startswith(f".{command}"):
                 await self.client.delete_messages(chat_id, message_id)
                 msg = await self.client.send_message(chat_id, replacements[0])
+                await asyncio.sleep(1.5)
                 for replacement in replacements[1:]:
-                    msg = await self.client.edit_message(msg, text=replacement)
+                    try:
+                        await self.client.edit_message(chat_id, msg.id, text=replacement)
+                    except MessageNotModifiedError:
+                        await self.client.edit_message(chat_id, msg.id, text=replacements[replacements.index(replacement)])
                     await asyncio.sleep(1.5)
-    
-if __name__ == "__main__":
-    edit = editor()
-    client = edit.start_session()
-    
-    @client.on(events.NewMessage(from_users=['me']))
-    async def handler(event):
-        msg = event.message
-        if msg.text:
-            if msg.text.startswith('.'):
-                await edit.replace_text(msg.text, msg.peer_id.user_id, msg.id)
-            elif msg.text.startswith('/listing'):
-                await client.delete_message(msg)
-                await client.send_message(edit.get_command_list())
-            elif msg.text.startswith('/add'):
-                parsed_msg = msg.text.split(" ", 2)
-                await client.delete_message(msg)
-                await client.send_message(edit.add_key(parsed_msg[1], parsed_msg[2]))
-            elif msg.text.startswith('/del'):
-                parsed_msg = msg.text.split(" ")
-                await client.delete_message(msg)
-                await client.send_message(edit.delete_key(parsed_msg[1]))
 
-    client.run_until_disconnected()
+print("[+] Connection to Telegram servers... ok")
+client.run_until_disconnected()
