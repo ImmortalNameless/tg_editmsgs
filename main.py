@@ -103,7 +103,7 @@ if __name__ == "__main__":
             msg = event.message
             if msg.text:
                 if msg.text.startswith('.'):
-                    edit.replace_text(msg.text, msg.peer_id.user_id, msg.id)
+                    await edit.replace_text(msg.text, msg.peer_id.user_id, msg.id)
                 elif msg.text.startswith('/listing'):
                     await client.delete_message(msg)
                     await client.send_message(edit.get_command_list())
