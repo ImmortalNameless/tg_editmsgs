@@ -95,11 +95,9 @@ class editor:
 if __name__ == "__main__":
     edit = editor()
     client = edit.start_session()
-
-    with client:
-
-        @client.on(events.NewMessage(from_users=['me']))
-        async def handler(event):
+    
+    @client.on(events.NewMessage(from_users=['me']))
+    async def handler(event):
             msg = event.message
             if msg.text:
                 if msg.text.startswith('.'):
@@ -116,4 +114,4 @@ if __name__ == "__main__":
                     await client.delete_message(msg)
                     await client.send_message(edit.delete_key(parsed_msg[1]))
 
-        client.run_until_disconnected()
+    client.run_until_disconnected()
