@@ -22,10 +22,13 @@ class editor:
         self.opendict()
 
     def opendict(self, data: dict|list|None=[]) -> dict|list|None:
-        result = None
+        result = []
         if len(data) == 0:
-            with open("database.json", "r", encoding="utf-8") as file:
-                result = json.load(file)
+            try:
+                with open("database.json", "r", encoding="utf-8") as file:
+                    result = json.load(file)
+            except Exception:
+                result = []
         else:
             with open("database.json", "w+", encoding="utf-8") as file:
                 json.dump(data, file, ensure_ascii=False, indent=4)
